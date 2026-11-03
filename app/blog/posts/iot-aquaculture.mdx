@@ -1,0 +1,17 @@
+---
+title: 'IoT-Based Aquaculture Monitoring and Control'
+publishedAt: '2026-05-03'
+summary: 'An ESP32-based IoT system for monitoring water quality, visualizing sensor data, and automating aquaculture operations.'
+---
+
+Maintaining suitable water conditions is essential for healthy aquaculture operations. Parameters such as water temperature and turbidity need to be monitored regularly, as unexpected changes can affect aquatic environments and require timely intervention. This project explored how Internet of Things (IoT) technologies can be used to automate water-quality monitoring and improve operational visibility.
+
+The system was built around an ESP32 microcontroller, connected to sensors for measuring water temperature and turbidity. The ESP32 collected sensor readings and prepared the data for wireless transmission. This provided a way to continuously monitor water conditions without relying on manual measurements.
+
+For communication, I integrated LoRa technology to transmit sensor data over longer distances with low power consumption. The data was routed through The Things Network (TTN), which handled LoRa network connectivity. MQTT was used to exchange sensor information between the communication layer and the application backend, while Firebase provided cloud-based data storage and integration.
+
+On the application side, I designed a dashboard to visualize incoming sensor readings in real time. The interface provided visibility into water-quality measurements and helped identify abnormal conditions through anomaly detection. The monitoring system was also connected to an automated water-pump control mechanism, allowing the system to respond to detected conditions rather than relying entirely on manual intervention.
+
+An important part of the project was understanding how the different layers of an IoT solution work together: sensor acquisition, embedded processing, wireless communication, cloud messaging, data management, visualization, and physical control. It provided practical experience in connecting embedded hardware with cloud services to build a complete monitoring and automation system.
+
+**Technologies:** ESP32, C/C++, IoT, LoRa, The Things Network (TTN), MQTT, Firebase, Sensor Integration, Real-Time Monitoring.

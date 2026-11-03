@@ -1,0 +1,21 @@
+---
+title: 'Wi-Fi RTT Indoor Positioning and Adversarial Robustness'
+publishedAt: '2026-07-03'
+summary: 'An indoor positioning system using Wi-Fi RTT fingerprinting and machine learning, with experiments on robustness against data-poisoning attacks.'
+---
+
+Accurate indoor positioning remains a challenging problem because GPS signals are often unavailable or unreliable inside buildings. Wi-Fi-based positioning offers an alternative by using wireless measurements collected from access points to estimate a device's location. This project explored Wi-Fi Round Trip Time (RTT) fingerprinting as an approach to indoor localization, with an additional focus on the robustness of machine learning models against adversarial attacks.
+
+The approach was based on fingerprinting, where Wi-Fi measurements collected at known locations are used to construct a radio map. Each location is represented by a fingerprint of its observed wireless measurements. When a new measurement is received, the system compares it against the radio map to estimate the most likely location.
+
+I developed a radio-map-based machine learning pipeline to process these fingerprints and evaluate different positioning approaches. The experiments compared K-Nearest Neighbors (KNN), Random Forest, and Decision Tree algorithms. KNN provided a distance-based approach to matching fingerprints, while the tree-based models offered alternative ways to learn relationships between wireless measurements and location labels. The comparison focused on positioning performance, computational efficiency, and the trade-offs between the different models.
+
+Beyond localization accuracy, the project investigated an important security concern: machine learning models can be affected by manipulated training data. I explored data-poisoning attacks, where an adversary introduces misleading or modified samples into the training dataset to influence the model's learned behaviour.
+
+The evaluation considered both white-box and black-box attack scenarios. White-box experiments examined attacks with knowledge of the target model, while black-box scenarios considered attacks with limited knowledge of the model's internal structure. This helped assess how different positioning models behaved under adversarial conditions and highlighted the importance of evaluating not only prediction accuracy but also model reliability.
+
+The project combined wireless communication concepts, data-driven localization, and adversarial machine learning. It gave me practical experience in building machine learning pipelines, comparing classification algorithms, working with radio-map fingerprints, and studying the security limitations of ML-based positioning systems.
+
+**GitHub:** [View Source Code](https://github.com/Valenriquez/Project-Codas)
+
+**Technologies:** Python, Machine Learning, Wi-Fi RTT, Fingerprinting, KNN, Random Forest, Decision Trees, Adversarial Machine Learning.

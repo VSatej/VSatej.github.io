@@ -1,42 +1,81 @@
-# Portfolio Blog Starter
+# Satej Vadakkath — Personal Portfolio
 
-This is a porfolio site template complete with a blog. Includes:
+A personal portfolio showcasing my professional experience, technical skills, projects, and articles across software engineering, IoT, machine learning, and applied AI.
 
-- MDX and Markdown support
-- Optimized for SEO (sitemap, robots, JSON-LD schema)
-- RSS Feed
-- Dynamic OG images
-- Syntax highlighting
-- Tailwind v4
-- Vercel Speed Insights / Web Analytics
-- Geist font
+Built with Next.js, TypeScript, Tailwind CSS, and MDX, and deployed using GitHub Pages.
 
-## Demo
+## Live Website
 
-https://portfolio-blog-starter.vercel.app
+[https://vsatej.github.io](https://vsatej.github.io)
 
-## How to Use
+## Features
 
-You can choose from one of the following two methods to use this repository:
+- **Portfolio:** Overview of my professional experience, skills, and background.
+- **Projects:** Selected projects in software engineering, IoT, machine learning, and applied AI.
+- **Technical Blog:** Articles and notes written using MDX.
+- **MDX and Markdown:** Support for structured technical articles.
 
-### One-Click Deploy
+## Tech Stack
 
-Deploy the example using [Vercel](https://vercel.com?utm_source=github&utm_medium=readme&utm_campaign=vercel-examples):
+- Next.js
+- React
+- TypeScript
+- Tailwind CSS
+- MDX / Markdown
+- pnpm
+- GitHub Pages
+- GitHub Actions
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/vercel/examples/tree/main/solutions/blog&project-name=blog&repository-name=blog)
+## Getting Started
 
-### Clone and Deploy
+### Prerequisites
 
-Execute [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app) with [pnpm](https://pnpm.io/installation) to bootstrap the example:
+- Node.js
+- pnpm
 
-```bash
-pnpm create next-app --example https://github.com/vercel/examples/tree/main/solutions/blog blog
-```
+### Installation
 
-Then, run Next.js in development mode:
+Clone the repository:
 
-```bash
+\`\`\`bash
+git clone https://github.com/VSatej/VSatej.github.io.git
+cd VSatej.github.io
+\`\`\`
+
+Install dependencies:
+
+\`\`\`bash
+pnpm install
+\`\`\`
+
+### Development
+
+Start the local development server:
+
+\`\`\`bash
 pnpm dev
-```
+\`\`\`
 
-Deploy it to the cloud with [Vercel](https://vercel.com/templates) ([Documentation](https://nextjs.org/docs/app/building-your-application/deploying)).
+Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+### Production Build
+
+Generate the static site:
+
+\`\`\`bash
+pnpm build
+\`\`\`
+
+The exported website is generated in the `out/` directory.
+
+## Deployment
+
+The portfolio is hosted on **GitHub Pages**.
+
+Deployment is automated through GitHub Actions. Pushing changes to the `main` branch triggers the build and deployment workflow.
+
+Live website: [https://vsatej.github.io](https://vsatej.github.io)
+
+## License
+
+This repository is maintained as a personal portfolio.

@@ -1,0 +1,213 @@
+---
+title: "Feeding the Beast: How AI Accelerators and Memory Tricks Make LLM Inference Fast"
+description: "A beginner-friendly tour of LLM inference, AI Core architecture, tensor caching, HBM, and near-memory computing, and why memory, not math, is the real bottleneck."
+publishedAt: 2026-11-15
+tags: ["LLM", "AI accelerator", "HBM", "KV cache", "PIM", "hardware architecture"]
+---
+
+
+A **Large Language Model (LLM)** is, at its core, a huge file of numbers called **weights**. Running the model to get an answer is called **inference**. It sounds like pure maths, but modern AI hardware spends most of its time on something less glamorous: **waiting for data**.
+
+This post walks from "how an LLM works" to "how next-generation accelerators fix its biggest bottleneck".
+
+---
+
+## 1. Two resources decide everything
+
+Every inference job depends on two resources:
+
+1. **Compute**: how many maths operations the GPU can execute per second (FLOP/s).
+2. **Memory bandwidth**: how many bytes the GPU can move from its memory to its cores per second.
+> **The chef and the pantry.** Imagine a chef (the cores) who is extremely fast, but whose ingredients (the weights) arrive slowly from the pantry (memory). Most of the time, the chef is just waiting.
+
+An NVIDIA **H100** has **80 GB** of fast memory called **HBM (High Bandwidth Memory)** and moves roughly **3.35 TB of data per second**. That sounds enormous, yet compute is faster still. This gap is known as the **memory wall**.
+
+A useful concept here is **arithmetic intensity**: the number of operations performed per byte moved. Low intensity means you are **memory-bound** (waiting on data); high intensity means you are **compute-bound** (the cores are the limit).
+
+**Back-of-envelope example.** An 8-billion-parameter model in 16-bit precision is about 16 GB of weights. To generate one token, the GPU must stream essentially all of them from HBM:
+
+```text
+16 GB / 3.35 TB/s ≈ 4.8 ms per token  →  ~200 tokens/s (upper bound, batch size 1)
+```
+
+No amount of extra compute improves that number. Only moving fewer bytes, or moving them faster, does.
+
+---
+
+## 2. Text becomes numbers
+
+The model cannot read text. A **tokenizer** splits text into small pieces called **tokens**, and each token ID is mapped to a vector of numbers called an **embedding**.
+
+<style>{`
+.blog-table { border-collapse: collapse; width: 100%; margin: 1.5rem 0; }
+.blog-table th, .blog-table td { text-align: left; padding: 0.5rem 0.75rem; border-bottom: 1px solid rgba(128, 128, 128, 0.35); }
+.blog-table th { font-weight: 600; border-bottom-width: 2px; }
+`}</style>
+
+<table className="blog-table">
+    <thead>
+    <tr><th>Token</th><th>ID</th><th>Embedding</th></tr>
+    </thead>
+    <tbody>
+    <tr><td>I</td><td>40</td><td><code>[0.2, 0.3, ...]</code></td></tr>
+    <tr><td>Love</td><td>50</td><td><code>[..., ...]</code></td></tr>
+    <tr><td>AI</td><td>90</td><td><code>[..., ...]</code></td></tr>
+    <tr><td>GPU</td><td>101</td><td><code>[..., ...]</code></td></tr>
+    <tr><td>Memory</td><td>112</td><td><code>[..., ...]</code></td></tr>
+    </tbody>
+</table>
+*(IDs are illustrative; real vocabularies have tens of thousands of entries.)*
+
+---
+
+## 3. Inside a Transformer layer: Q, K, V
+
+The **Transformer** is the architecture behind modern LLMs. Its key operation is **self-attention**, which uses three vectors per token:
+
+- **Query (Q)**: what this token is looking for.
+- **Key (K)**: what each token offers to be matched against.
+- **Value (V)**: the actual information each token contributes.
+Attention is three steps:
+
+```text
+S = Q · Kᵀ                  # affinity scores, shape L × L  (L = sequence length)
+P = softmax(S / √d_k)       # convert scores to probabilities
+Z = P · V                   # weighted average of the Values
+```
+
+Putting it together: `Z = softmax(Q·Kᵀ / √d_k) · V`. The `√d_k` scaling keeps the scores from growing too large, which would make the softmax overly "spiky".
+
+Two things matter for hardware:
+
+- Attention and the **feed-forward** layers are dominated by **large matrix multiplications**, which is exactly what dedicated matrix units are built for.
+- The score matrix is `L × L`, so cost grows quadratically with context length.
+The original Transformer had an **encoder** (reads the input, e.g. *"Je suis étudiant"*) and a **decoder** (writes the output, *"I am a student"*), each built from self-attention and feed-forward blocks, with an extra encoder-decoder attention in the decoder. Most modern chat LLMs use a decoder-only variant, but the building blocks are the same.
+
+---
+
+## 4. Prefill vs decode, and the KV cache
+
+Inference has two distinct phases:
+
+**Prefill: reading the prompt.** All prompt tokens are processed at once in big, parallel matrix multiplications. This phase is typically **compute-bound**. While doing so, the model saves the Keys and Values of every prompt token. That saved data is the **KV cache**.
+
+**Decode: writing the answer.** The model produces **one token per step**, and each token depends on the previous one, so the steps **cannot be done in parallel**. Every step re-reads all the weights *and* the growing KV cache to do very little maths. This phase is **memory-bound**, and it is where most of the latency lives.
+
+The KV cache trades memory for compute: instead of recomputing K and V for every earlier token at every step, the model reads them back. It lives in the accelerator's memory, typically **HBM**, and grows with context length and batch size.
+
+---
+
+## 5. Inside an AI accelerator
+
+An **AI accelerator** is a chip designed to run these workloads efficiently. A simplified view:
+
+```text
+┌──────────────────────── AI Accelerator ────────────────────────┐
+│  ┌─────────────────────┐          ┌─────────────────────┐       │
+│  │ AI Core 1           │          │ AI Core 2           │       │
+│  │  • Matrix Unit      │          │  • Matrix Unit      │       │
+│  │  • Vector Unit      │          │  • Vector Unit      │       │
+│  │  • Local SRAM       │          │  • Local SRAM       │       │
+│  └─────────────────────┘          └─────────────────────┘       │
+│  ┌─────────────────────┐          ┌─────────────────────┐       │
+│  │ AI Core 3           │          │ AI Core 4           │       │
+│  └─────────────────────┘          └─────────────────────┘       │
+│  ┌──────────────────── Shared Memory (HBM) ─────────────────┐   │
+│  └──────────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+Each **AI Core** typically contains:
+
+- **Matrix unit**: performs the big matrix multiplications (`Q·Kᵀ`, `P·V`, feed-forward layers).
+- **Vector unit**: handles element-wise work such as softmax, activations, and normalisation.
+- **Local SRAM**: a small, extremely fast on-chip memory that holds data close to the compute.
+All cores share a large but slower **HBM** pool.
+
+**GPU vs NPU.** Both are accelerators, but they are separate architectures. A **GPU** is versatile (graphics, training, general parallel computing). An **NPU (Neural Processing Unit)** is more specialised for AI, often a **low-power chip** where **power efficiency** matters most, such as in **mobile devices**.
+
+---
+
+## 6. Tensor caching: stop fetching the same data twice
+
+A **tensor** is just a multi-dimensional array of numbers (weights, activations, KV entries).
+
+> **Tensor caching** is the technique of storing frequently used tensors in a faster memory so that an AI accelerator can reuse them without repeatedly fetching or recalculating them.
+
+Why it matters: moving data from HBM costs far more time and energy than computing on it. Good data placement keeps hot tensors in local SRAM, splits big matrices into **tiles** that fit on-chip, and reuses each tile as much as possible before evicting it. **FlashAttention** is a well-known example: it computes attention in SRAM-sized tiles so the huge `L × L` score matrix never has to be written out to HBM.
+
+Together, caching, **memory hierarchy** design (registers → SRAM → HBM), and **data placement** reduce **memory traffic**, the real cost of inference.
+
+---
+
+## 7. Precision: fewer bits, fewer bytes
+
+*More precision = more memory.* Reducing numeric precision, called **quantization**, shrinks the bytes that must be moved per token.
+
+<table className="blog-table">
+    <thead>
+    <tr><th>Format</th><th>Bits</th><th>Notes</th></tr>
+    </thead>
+    <tbody>
+    <tr><td>FP32</td><td>32</td><td>Full precision, mostly used in training</td></tr>
+    <tr><td>FP16</td><td>16</td><td>Half precision, common for inference</td></tr>
+    <tr><td>BF16</td><td>16</td><td>Same range as FP32 with fewer mantissa bits, stable for LLMs</td></tr>
+    <tr><td>INT8</td><td>8</td><td>Integer quantization, half the memory of FP16</td></tr>
+    <tr><td>INT4</td><td>4</td><td>Aggressive quantization, a quarter of FP16</td></tr>
+    </tbody>
+</table>
+Revisit our 8B model: at INT4 it is about 4 GB, so the bandwidth-bound ceiling jumps from ~200 to roughly 800 tokens/s, at the cost of some accuracy that must be managed carefully.
+
+---
+
+## 8. HBM: stacking memory in 3D
+
+Moving data between memory and processing units is the expensive part, so the physical design of memory matters.
+
+**HBM** stacks multiple **DRAM dies vertically**, right beside the processor. The layers are connected by **TSVs (Through-Silicon Vias)**, tiny vertical wires that give a very wide, short, energy-efficient path.
+
+```text
+   Processor ◄──────► Logic die / Memory Controller
+                          │
+                       DRAM 1
+                          │  TSV
+                       DRAM 2
+                          │
+                       DRAM 3
+```
+
+A wide interface plus short wires is how an H100 reaches several TB/s. But the processor still has to pull every byte across that interface.
+
+---
+
+## 9. Near-memory computing and Processing-in-Memory
+
+If moving data is the problem, **move the compute instead**.
+
+- **Near-Memory Computing (NMC)** places processing units *close to* the memory, for example on the logic die beneath an HBM stack, so computation happens near where the data is stored. The goal: reduce **latency**, **energy**, and **data movement**.
+- **Processing-in-Memory (PIM)** goes further: computation is performed **inside the memory** itself, in or beside the DRAM banks.
+
+This fits decode well. Processors can perform calculations faster than memory can supply the required data, and decode is dominated by simple, low-intensity operations (such as matrix-vector products) in which each weight is read once and used once. Vendor prototypes such as Samsung's HBM-PIM and SK hynix's AiM explore exactly this idea.
+
+---
+
+## 10. Open research questions
+
+If you want to work on this space, there is a lot to explore:
+
+- **AI Core execution strategies**: how to schedule matrix and vector units so they stay busy during both prefill and decode.
+- **Tensor caching and data placement**: what to keep in SRAM vs HBM (weights, KV cache, activations), and how to cut memory traffic.
+- **Simulation models and prototypes**: building cycle-level or analytical models to test architectural and runtime ideas before committing to silicon.
+- **Bottleneck analysis**: using roofline-style reasoning to find out whether a workload is limited by compute, bandwidth, capacity, or energy.
+- **Advanced memory integration**: 3D-stacked memory, NMC, and PIM, and how software must change to exploit them.
+
+---
+
+## Key takeaways
+
+1. LLM inference is limited by **compute** *and* **memory bandwidth**, and decode is mostly the latter.
+2. The **KV cache** saves recomputation but consumes HBM capacity and bandwidth.
+3. **Tensor caching**, **quantization**, and smart **data placement** all attack the same enemy: data movement.
+4. **HBM** (3D-stacked DRAM with TSVs) raises bandwidth; **near-memory computing** and **PIM** go further by bringing compute to the data.
+
+The chef is already fast enough. The next generation of AI hardware is about building a better pantry.

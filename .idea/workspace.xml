@@ -4,7 +4,11 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="d81ea47e-846e-4e21-9f11-e4d4127133e5" name="Changes" comment="" />
+    <list default="true" id="d81ea47e-846e-4e21-9f11-e4d4127133e5" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/app/blog/posts/ai-core.mdx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/blog/[slug]/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/blog/[slug]/page.tsx" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -18,18 +22,18 @@
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
-  <component name="GitHubPullRequestSearchHistory"><![CDATA[{
-  "lastFilter": {
-    "state": "OPEN",
-    "assignee": "VSatej"
+  <component name="GitHubPullRequestSearchHistory">{
+  &quot;lastFilter&quot;: {
+    &quot;state&quot;: &quot;OPEN&quot;,
+    &quot;assignee&quot;: &quot;VSatej&quot;
   }
-}]]></component>
-  <component name="GithubPullRequestsUISettings"><![CDATA[{
-  "selectedUrlAndAccountId": {
-    "url": "https://github.com/VSatej/VSatej.github.io.git",
-    "accountId": "62ad3647-4a46-4529-9c9d-c7f0f1852e1a"
+}</component>
+  <component name="GithubPullRequestsUISettings">{
+  &quot;selectedUrlAndAccountId&quot;: {
+    &quot;url&quot;: &quot;https://github.com/VSatej/VSatej.github.io.git&quot;,
+    &quot;accountId&quot;: &quot;62ad3647-4a46-4529-9c9d-c7f0f1852e1a&quot;
   }
-}]]></component>
+}</component>
   <component name="ProjectColorInfo">{
   &quot;associatedIndex&quot;: 3
 }</component>
@@ -40,8 +44,18 @@
   </component>
   <component name="PropertiesComponent"><![CDATA[{
   "keyToString": {
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "git-widget-placeholder": "main",
+    "js.debugger.nextJs.config.created.client": "true",
+    "js.debugger.nextJs.config.created.server": "true",
+    "last_opened_file_path": "/Users/satej/VSatej.github.io/app/blog/posts",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
     "nodejs_package_manager_path": "npm",
     "ts.external.directory.path": "/Users/satej/VSatej.github.io/node_modules/typescript/lib",
     "vue.rearranger.settings.migration": "true"
@@ -49,10 +63,26 @@
 }]]></component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/app/blog/posts" />
       <recent name="$PROJECT_DIR$/app/work/posts" />
       <recent name="$PROJECT_DIR$/app/components" />
       <recent name="$PROJECT_DIR$/app" />
     </key>
+  </component>
+  <component name="RunManager" selected="npm.Next.js: server-side">
+    <configuration name="Next.js: debug client-side" type="JavascriptDebugType" uri="http://localhost:3000/">
+      <method v="2" />
+    </configuration>
+    <configuration name="Next.js: server-side" type="js.build_tools.npm">
+      <package-json value="$PROJECT_DIR$/package.json" />
+      <command value="run" />
+      <scripts>
+        <script value="dev" />
+      </scripts>
+      <node-interpreter value="project" />
+      <envs />
+      <method v="2" />
+    </configuration>
   </component>
   <component name="SharedIndexes">
     <attachedChunks>
@@ -63,13 +93,15 @@
   </component>
   <component name="TaskManager">
     <task active="true" id="Default" summary="Default task">
-      <changelist id="7e1e5221-ce73-43eb-b6b1-77312ba8d692" name="Changes" comment="" />
+      <changelist id="d81ea47e-846e-4e21-9f11-e4d4127133e5" name="Changes" comment="" />
       <created>1793698536288</created>
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1793698536288</updated>
       <workItem from="1793698537750" duration="11000" />
       <workItem from="1793698551263" duration="6000" />
+      <workItem from="1793826707031" duration="648000" />
+      <workItem from="1794744568316" duration="968000" />
     </task>
     <servers />
   </component>
@@ -82,7 +114,6 @@
         <line-breakpoint enabled="true" type="javascript">
           <url>file://$PROJECT_DIR$/app/components/work.tsx</url>
           <line>21</line>
-          <properties lambdaOrdinal="-1" />
           <option name="timeStamp" value="1" />
         </line-breakpoint>
       </breakpoints>

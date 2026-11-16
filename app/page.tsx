@@ -8,12 +8,12 @@ export default function Page() {
         About Me
       </h1>
       <p className="mb-4">
-        {`I live in Grenoble, France and am seeking a six-month end-of-studies internship starting January 2027. CoDaS M2 student at Grenoble INP–Ensimag, specialising in Applied AI and Interactive Systems.`}
+        {`M2 student at Grenoble INP–Ensimag, specialising in Applied AI and Interactive Systems, with extensive professional experience in software engineering. Experienced in building scalable full-stack applications, backend systems and cloud-based solutions. Currently developing expertise in machine learning and AI through academic research and practical projects. Seeking a six-month, full-time internship starting February 2027.`}
       </p>
         <Link
             key='cv'
             className="flex flex-col space-y-1 mb-4"
-            href='https://drive.google.com/file/d/1WAXu2djBYglDsNEUwJF30qyBO63JCqXE/view'
+            href='https://drive.google.com/file/d/1VnxV8kNWywznXI9mmX4UefyfFcuBoVOZ/view'
         >
             <div className="w-full flex flex-col md:flex-row space-x-0 md:space-x-2">
                 <p className="text-neutral-900 dark:text-neutral-100 tracking-tight">

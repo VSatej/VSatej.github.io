@@ -24,14 +24,6 @@ An NVIDIA **H100** has **80 GB** of fast memory called **HBM (High Bandwidth Mem
 
 A useful concept here is **arithmetic intensity**: the number of operations performed per byte moved. Low intensity means you are **memory-bound** (waiting on data); high intensity means you are **compute-bound** (the cores are the limit).
 
-**Back-of-envelope example.** An 8-billion-parameter model in 16-bit precision is about 16 GB of weights. To generate one token, the GPU must stream essentially all of them from HBM:
-
-```text
-16 GB / 3.35 TB/s ≈ 4.8 ms per token  →  ~200 tokens/s (upper bound, batch size 1)
-```
-
-No amount of extra compute improves that number. Only moving fewer bytes, or moving them faster, does.
-
 ---
 
 ## 2. Text becomes numbers
@@ -156,7 +148,7 @@ Together, caching, **memory hierarchy** design (registers → SRAM → HBM), and
     <tr><td>INT4</td><td>4</td><td>Aggressive quantization, a quarter of FP16</td></tr>
     </tbody>
 </table>
-Revisit our 8B model: at INT4 it is about 4 GB, so the bandwidth-bound ceiling jumps from ~200 to roughly 800 tokens/s, at the cost of some accuracy that must be managed carefully.
+
 
 ---
 
@@ -187,19 +179,7 @@ If moving data is the problem, **move the compute instead**.
 - **Near-Memory Computing (NMC)** places processing units *close to* the memory, for example on the logic die beneath an HBM stack, so computation happens near where the data is stored. The goal: reduce **latency**, **energy**, and **data movement**.
 - **Processing-in-Memory (PIM)** goes further: computation is performed **inside the memory** itself, in or beside the DRAM banks.
 
-This fits decode well. Processors can perform calculations faster than memory can supply the required data, and decode is dominated by simple, low-intensity operations (such as matrix-vector products) in which each weight is read once and used once. Vendor prototypes such as Samsung's HBM-PIM and SK hynix's AiM explore exactly this idea.
-
----
-
-## 10. Open research questions
-
-If you want to work on this space, there is a lot to explore:
-
-- **AI Core execution strategies**: how to schedule matrix and vector units so they stay busy during both prefill and decode.
-- **Tensor caching and data placement**: what to keep in SRAM vs HBM (weights, KV cache, activations), and how to cut memory traffic.
-- **Simulation models and prototypes**: building cycle-level or analytical models to test architectural and runtime ideas before committing to silicon.
-- **Bottleneck analysis**: using roofline-style reasoning to find out whether a workload is limited by compute, bandwidth, capacity, or energy.
-- **Advanced memory integration**: 3D-stacked memory, NMC, and PIM, and how software must change to exploit them.
+This fits decode well. Processors can perform calculations faster than memory can supply the required data, and decode is dominated by simple, low-intensity operations (such as matrix-vector products) in which each weight is read once and used once.
 
 ---
 

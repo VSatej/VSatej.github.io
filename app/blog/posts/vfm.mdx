@@ -1,0 +1,188 @@
+---
+title: "Teaching a Vision Foundation Model to See Wafers"
+subtitle: "Self-supervised domain adaptation of DINOv2 for defect classification, anomaly detection and synthetic data"
+description: "How we plan to close the gap between natural-image pre-training and semiconductor inspection data using self-supervised fine-tuning on unlabeled, multi-modal wafer images."
+publishedAt: 2026-11-18
+author: "Data Science Group, Innovation Team"
+tags:
+  - self-supervised learning
+  - vision foundation models
+  - DINOv2
+  - semiconductor
+  - anomaly detection
+  - synthetic data
+---
+
+Vision foundation models (VFMs) like DINOv2 are powerful, but they were trained on natural images, not on wafers. Instead of paying experts to label thousands of defect images, we continue the backbone's **self-supervised** training on our own **unlabeled** wafer images, across up to four imaging modalities. Then we measure what that buys us for supervised defect classification, feature-based anomaly detection, and (optionally) synthetic defect generation.
+
+This post walks through the problem, the idea, the method, and the evaluation plan for a six-month internship project in our data science group. It is written as a technical design document: the *why*, the *how*, and exactly *what we will measure* to decide whether it worked.
+
+---
+
+## 1. The problem: finding defects on wafers
+
+A **wafer** is a thin slice of semiconductor material on which integrated circuits are manufactured. Many process steps are involved, and at any of them something can go wrong. The defect families we care about are:
+
+1. **Scratches**
+2. **Cracks**
+3. **Particles and contamination**
+4. **Surface irregularities**
+5. **Pattern defects**
+
+To catch these, inspection tools capture **high-resolution images** of the wafer, and software then identifies the defects.
+
+### Why classic supervised computer vision struggles here
+
+Traditional computer vision models need **a lot of labeled training images**. In an industrial setting, that assumption breaks down quickly:
+
+- **Labeling needs a domain expert.** You cannot crowd-source "is this a pattern defect or a process variation?". Expert time is scarce and expensive.
+- **Some defects are extremely rare.** The class you care about most (the critical, yield-killing defect) is often the one with the fewest examples.
+
+So we have the opposite of the usual deep learning situation: **plenty of images, very few labels.** That asymmetry is exactly what self-supervised learning is built to exploit.
+
+---
+
+## 2. Vision foundation models and the domain gap
+
+A **vision foundation model** is a deep learning model pre-trained on a very large dataset. We use **DINOv2** as our reference backbone.
+
+Because of that pre-training, a VFM has already learned a rich vocabulary of visual characteristics:
+
+- Edges
+- Shapes
+- Textures
+- Patterns
+- Objects and structure
+
+This is why a frozen VFM plus a tiny classifier head often works surprisingly well, even with few labels.
+
+**But there is a catch.** DINOv2 was trained primarily on **natural images**, not semiconductor wafer images. We call this the **domain gap**, and for wafers it shows up in several concrete ways:
+
+<table>
+    <thead>
+    <tr>
+        <th>Aspect</th>
+        <th>Natural-image pre-training</th>
+        <th>Wafer inspection data</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr>
+        <td>Resolution</td>
+        <td>Typically 224 to 518 px crops</td>
+        <td>Very high resolution, defects can be a handful of pixels</td>
+    </tr>
+    <tr>
+        <td>Channels / modality</td>
+        <td>RGB photographs</td>
+        <td>Single-channel images from up to four optical modalities</td>
+    </tr>
+    <tr>
+        <td>Content</td>
+        <td>Objects, scenes, animals</td>
+        <td>Repetitive die patterns, fine textures, no "objects"</td>
+    </tr>
+    <tr>
+        <td>Defect signal</td>
+        <td>Salient, high contrast</td>
+        <td>Often subtle and low contrast</td>
+    </tr>
+    </tbody>
+</table>
+
+The VFM's features may simply not be tuned to what matters on a wafer. Our hypothesis:
+
+> A short **self-supervised domain-adaptation step**, run *before* any task-specific training, will produce a **wafer-specialized backbone** whose features transfer better to every downstream task.
+
+---
+
+## 3. Self-supervised learning in one paragraph
+
+In **self-supervised learning (SSL)**, a model learns useful representations from raw, unlabeled data by **generating its own supervisory signals**. No human annotation is required.
+
+DINOv2 does this with a *self-distillation* recipe. A student network and an EMA (exponential moving average) teacher network see different augmented views of the same image, and the student is trained to match the teacher.
+
+---
+
+## 4. Four imaging modalities, and why they matter
+
+Our tools can capture each wafer using **up to four imaging modalities**:
+
+- **Bright field imaging**
+- **Dark field imaging**
+- **Polarized imaging**
+- **Infrared imaging**
+
+**Why does it matter?** Because no single modality sees everything. Roughly speaking:
+
+<table>
+    <thead>
+    <tr>
+        <th>Modality (typical behavior)</th>
+        <th>What it tends to reveal</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr>
+        <td>Bright field</td>
+        <td>Surface texture and the printed pattern</td>
+    </tr>
+    <tr>
+        <td>Dark field</td>
+        <td>Light scattering, which highlights particles and scratches</td>
+    </tr>
+    <tr>
+        <td>Polarized / Infrared</td>
+        <td>Structural characteristics, including features below the surface</td>
+    </tr>
+    </tbody>
+</table>
+
+A defect that is invisible in one modality can be obvious in another. This leads to a design choice at the heart of the project.
+
+### Unimodal vs multimodal learning
+
+**Unimodal learning.** Train the model using **one imaging modality at a time**. This gives one adapted backbone (or one set of weights) per modality. It is simple, easy to deploy when a tool only produces one modality, and makes a clean baseline.
+
+**Multimodal learning.** Treat each wafer site as a stack of aligned images:
+
+```text
+X = [ I1, I2, I3, I4 ]      # bright field, dark field, polarized, infrared
+```
+
+and let the model learn from all of them jointly.
+
+
+---
+
+## 5. The method
+
+The whole project is one pipeline with an optional branch at the end:
+
+```text
+Unlabeled wafer corpus
+        │
+        ▼
+Self-supervised domain adaptation
+        │
+        ▼
+Wafer-specialized backbone
+        │
+        ├──► Supervised defect classification
+        ├──► Feature-based anomaly detection
+        │
+        ▼   (optional)
+Integrate into synthetic data pipeline
+        │
+        ▼
+Generate synthetic wafer defects
+
+
+```
+
+---
+
+## 10. Conclusion
+
+The problem is simple: **labels are the bottleneck in wafer inspection, but unlabeled images are abundant.** A foundation model brings strong general visual priors, self-supervised adaptation brings wafer-specific knowledge from data we already own, and together they should make every downstream task (classification, anomaly detection, and possibly synthetic data generation) cheaper to build and better at the rare, subtle defects that matter most.
+

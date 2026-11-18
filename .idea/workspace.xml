@@ -5,9 +5,9 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="d81ea47e-846e-4e21-9f11-e4d4127133e5" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/app/blog/posts/gem5.mdx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app/blog/posts/vfm.mdx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/blog/posts/ai-core.mdx" beforeDir="false" afterPath="$PROJECT_DIR$/app/blog/posts/ai-core.mdx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/page.tsx" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -38,6 +38,9 @@
   &quot;associatedIndex&quot;: 3
 }</component>
   <component name="ProjectId" id="3LaiMyTysSlMZmgE3yjKSCsMi5o" />
+  <component name="ProjectLevelVcsManager">
+    <ConfirmationsSetting value="2" id="Add" />
+  </component>
   <component name="ProjectViewState">
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
@@ -101,7 +104,7 @@
       <workItem from="1793698537750" duration="11000" />
       <workItem from="1793698551263" duration="6000" />
       <workItem from="1793826707031" duration="648000" />
-      <workItem from="1794744568316" duration="3071000" />
+      <workItem from="1794744568316" duration="7313000" />
     </task>
     <servers />
   </component>

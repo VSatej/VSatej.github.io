@@ -1,0 +1,450 @@
+---
+title: "Simulating a CPU with L1 and L2 caches using gem5"
+description: "A beginner-friendly tour of LLM inference, AI Core architecture, tensor caching, HBM, and near-memory computing, and why memory, not math, is the real bottleneck."
+publishedAt: 2026-11-17
+tags: ["LLM", "AI accelerator", "HBM", "KV cache", "PIM", "hardware architecture"]
+---
+
+The goal of this experiment is to simulate a CPU with a two-level cache hierarchy using gem5.
+
+We will configure:
+
+- An out-of-order CPU (DerivO3CPU).
+- Separate L1 Instruction Cache and L1 Data Cache.
+- A unified L2 Cache.
+- A main memory controller (DDR3).
+- A simple benchmark program.
+
+We will then examine cache statistics and understand how cache size and latency affect performance.
+
+## 2. System Architecture
+
+The simulated architecture looks like this:
+
+```text
+              +----------------------+
+              |         CPU          |
+              |      DerivO3CPU      |
+              +----------+-----------+
+                         |
+                +--------+--------+
+                |                 |
+          +-----v-----+     +-----v-----+
+          | L1 I-Cache|     | L1 D-Cache|
+          |   16 KB   |     |   16 KB   |
+          +-----+-----+     +-----+-----+
+                |                 |
+                +--------+--------+
+                         |
+                   +-----v-----+
+                   |  L2 Bus   |
+                   +-----+-----+
+                         |
+                   +-----v-----+
+                   | L2 Cache  |
+                   |   256 KB  |
+                   +-----+-----+
+                         |
+                   +-----v-----+
+                   | Memory Bus|
+                   +-----+-----+
+                         |
+                   +-----v-----+
+                   | DDR3 RAM  |
+                   +-----------+
+```
+
+### Cache hierarchy
+
+<table>
+    <thead>
+    <tr>
+        <th>Component</th>
+        <th>Configuration</th>
+        <th>Purpose</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr>
+        <td>L1 Instruction Cache</td>
+        <td>16 KB</td>
+        <td>Stores instructions</td>
+    </tr>
+    <tr>
+        <td>L1 Data Cache</td>
+        <td>16 KB</td>
+        <td>Stores data</td>
+    </tr>
+    <tr>
+        <td>L2 Cache</td>
+        <td>256 KB</td>
+        <td>Shared instruction and data cache</td>
+    </tr>
+    <tr>
+        <td>Main Memory</td>
+        <td>DDR3</td>
+        <td>Stores program and data</td>
+    </tr>
+    </tbody>
+</table>
+
+## 3. Understanding the Components
+
+### CPU
+
+We use `DerivO3CPU`, which represents an out-of-order CPU model.
+
+Out-of-order execution allows the processor to execute independent instructions without strictly following their original program order.
+
+### L1 Instruction Cache
+
+The L1 instruction cache stores recently accessed instructions.
+
+When the CPU fetches an instruction, it first checks this cache.
+
+### L1 Data Cache
+
+The L1 data cache stores recently accessed data.
+
+When the CPU loads or stores data, it accesses this cache.
+
+### L2 Cache
+
+L2 is a unified cache shared by instruction and data requests.
+
+If the required data is not found in L1, the request can be forwarded to L2.
+
+### Main Memory
+
+If the requested data is not found in the cache hierarchy, the request eventually reaches main memory.
+
+Accessing DRAM generally takes much longer than accessing cache.
+
+## 4. Create the Simulation Configuration
+
+Create a file named:
+
+`cache_test.py`
+
+The following is an illustrative classic-cache configuration. It uses gem5's Python configuration API.
+
+```python
+import m5
+from m5.objects import *
+
+# --------------------------------------------------
+# 1. Create the system
+# --------------------------------------------------
+
+system = System()
+
+system.clk_domain = SrcClockDomain()
+system.clk_domain.clock = "2GHz"
+system.clk_domain.voltage_domain = VoltageDomain()
+
+system.mem_mode = "timing"
+system.mem_ranges = [AddrRange("512MB")]
+
+# --------------------------------------------------
+# 2. Configure CPU
+# --------------------------------------------------
+
+system.cpu = DerivO3CPU()
+
+# --------------------------------------------------
+# 3. Configure L1 Instruction Cache
+# --------------------------------------------------
+
+class L1ICache(Cache):
+    size = "16kB"
+    assoc = 2
+    tag_latency = 2
+    data_latency = 2
+    response_latency = 2
+    mshrs = 4
+    tgts_per_mshr = 20
+
+# --------------------------------------------------
+# 4. Configure L1 Data Cache
+# --------------------------------------------------
+
+class L1DCache(Cache):
+    size = "16kB"
+    assoc = 2
+    tag_latency = 2
+    data_latency = 2
+    response_latency = 2
+    mshrs = 4
+    tgts_per_mshr = 20
+
+# --------------------------------------------------
+# 5. Configure L2 Cache
+# --------------------------------------------------
+
+class L2Cache(Cache):
+    size = "256kB"
+    assoc = 8
+    tag_latency = 10
+    data_latency = 10
+    response_latency = 10
+    mshrs = 16
+    tgts_per_mshr = 20
+
+# --------------------------------------------------
+# 6. Instantiate caches
+# --------------------------------------------------
+
+system.cpu.icache = L1ICache()
+system.cpu.dcache = L1DCache()
+
+system.l2cache = L2Cache()
+
+# --------------------------------------------------
+# 7. Configure buses
+# --------------------------------------------------
+
+system.l2bus = L2XBar()
+system.membus = SystemXBar()
+
+# Connect L1 caches to L2 bus
+system.cpu.icache.mem_side = system.l2bus.cpu_side_ports
+system.cpu.dcache.mem_side = system.l2bus.cpu_side_ports
+
+# Connect L2 cache to L2 bus and memory bus
+system.l2cache.cpu_side = system.l2bus.mem_side_ports
+system.l2cache.mem_side = system.membus.cpu_side_ports
+
+# --------------------------------------------------
+# 8. Connect CPU ports
+# --------------------------------------------------
+
+system.cpu.icache.cpu_side = system.cpu.icache_port
+system.cpu.dcache.cpu_side = system.cpu.dcache_port
+
+# --------------------------------------------------
+# 9. Configure memory
+# --------------------------------------------------
+
+system.mem_ctrl = MemCtrl()
+system.mem_ctrl.dram = DDR3_1600_8x8()
+system.mem_ctrl.dram.range = system.mem_ranges[0]
+
+system.mem_ctrl.port = system.membus.mem_side_ports
+
+# --------------------------------------------------
+# 10. Configure system port
+# --------------------------------------------------
+
+system.system_port = system.membus.cpu_side_ports
+
+# --------------------------------------------------
+# 11. Configure workload
+# --------------------------------------------------
+
+binary = "/path/to/arm64/benchmark"
+
+system.workload = SEWorkload.init_compatible(binary)
+
+process = Process()
+process.cmd = [binary]
+
+system.cpu.workload = process
+system.cpu.createThreads()
+
+# --------------------------------------------------
+# 12. Instantiate and simulate
+# --------------------------------------------------
+
+root = Root(full_system=False, system=system)
+
+m5.instantiate()
+
+print("Starting gem5 simulation...")
+
+exit_event = m5.simulate()
+
+print("Simulation finished!")
+print("Exit cause:", exit_event.getCause())
+
+m5.stats.dump()
+```
+
+## 5. Understanding the Cache Configuration
+
+Consider this L1 configuration:
+
+```python
+class L1DCache(Cache):
+    size = "16kB"
+    assoc = 2
+    tag_latency = 2
+    data_latency = 2
+    response_latency = 2
+```
+
+Explanation:
+
+<table>
+    <thead>
+    <tr>
+        <th>Parameter</th>
+        <th>Meaning</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr>
+        <td><code>size</code></td>
+        <td>Total cache capacity</td>
+    </tr>
+    <tr>
+        <td><code>assoc</code></td>
+        <td>Number of ways per cache set</td>
+    </tr>
+    <tr>
+        <td><code>tag_latency</code></td>
+        <td>Time to check the cache tag</td>
+    </tr>
+    <tr>
+        <td><code>data_latency</code></td>
+        <td>Time to access cache data</td>
+    </tr>
+    <tr>
+        <td><code>response_latency</code></td>
+        <td>Time to return the response</td>
+    </tr>
+    </tbody>
+</table>
+
+## 6. Understanding Simulation Statistics
+
+After simulation, gem5 generates a statistics file:
+
+```text
+m5out/stats.txt
+```
+
+Important metrics include:
+
+<table>
+    <thead>
+    <tr>
+        <th>Metric</th>
+        <th>Meaning</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr>
+        <td><code>simTicks</code></td>
+        <td>Simulated time in gem5 ticks</td>
+    </tr>
+    <tr>
+        <td><code>simInsts</code></td>
+        <td>Number of simulated instructions</td>
+    </tr>
+    <tr>
+        <td><code>system.cpu.cpi</code></td>
+        <td>Cycles per instruction</td>
+    </tr>
+    <tr>
+        <td><code>system.cpu.ipc</code></td>
+        <td>Instructions per cycle</td>
+    </tr>
+    <tr>
+        <td><code>system.cpu.icache.overallMissRate::total</code></td>
+        <td>Instruction cache miss rate</td>
+    </tr>
+    <tr>
+        <td><code>system.cpu.dcache.overallMissRate::total</code></td>
+        <td>Data cache miss rate</td>
+    </tr>
+    <tr>
+        <td><code>system.l2cache.overallMissRate::total</code></td>
+        <td>L2 cache miss rate</td>
+    </tr>
+    </tbody>
+</table>
+
+Exact statistic names can vary across gem5 versions and cache configurations.
+
+### Cache hit and miss
+
+**Cache hit:** The requested data is found in the cache.
+
+**Cache miss:** The requested data is not found in the cache, so the request must be serviced by a lower cache level or memory.
+
+A lower miss rate generally means fewer requests need to go to slower memory levels.
+
+## 7. Experiment: Change L2 Cache Size
+
+Now we can investigate how cache capacity affects performance.
+
+Run multiple simulations with different L2 sizes.
+
+<table>
+    <thead>
+    <tr>
+        <th>Experiment</th>
+        <th>L2 Cache Size</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr>
+        <td>Run 1</td>
+        <td>128 KB</td>
+    </tr>
+    <tr>
+        <td>Run 2</td>
+        <td>256 KB</td>
+    </tr>
+    <tr>
+        <td>Run 3</td>
+        <td>512 KB</td>
+    </tr>
+    <tr>
+        <td>Run 4</td>
+        <td>1 MB</td>
+    </tr>
+    </tbody>
+</table>
+
+Change the configuration:
+
+```python
+class L2Cache(Cache):
+    size = "512kB"
+```
+
+Run the same benchmark for each configuration.
+
+Compare:
+
+- L2 miss rate
+- L1 miss rate
+- CPU CPI
+- Total simulation time
+
+### Expected observations
+
+A larger L2 cache may reduce the number of memory accesses if the workload has sufficient data reuse.
+
+However, a larger cache does not always improve performance. The result depends on the workload, access patterns, cache latency and other architectural parameters.
+
+## 8. Key Takeaways
+
+Through this experiment, we learn:
+
+1. L1 instruction and data caches serve different purposes.
+2. L2 is a unified cache shared by both L1 caches.
+3. Cache misses can cause accesses to slower memory.
+4. Cache size and associativity influence hit and miss behaviour.
+5. gem5 allows us to experiment with different CPU and memory configurations.
+
+Try for different workloads and cache configurations to see how they affect performance:
+
+- Comparing `TimingSimpleCPU` and `DerivO3CPU`.
+- Comparing 2-way, 4-way and 8-way associativity.
+- Changing L1 cache sizes.
+- Comparing DDR3 and DDR4 configurations.
+- Investigating memory latency and bandwidth.
+- Studying cache behaviour for matrix multiplication.
+- Exploring CPU performance with different memory hierarchies.
